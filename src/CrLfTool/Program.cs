@@ -39,7 +39,7 @@ namespace CrLfTool
       }
       if (!result)
       {
-        throw new InvalidDataException("Validation error");
+        Environment.Exit(-1);
       }
     }
     private static async Task<bool> ProcessDirectory(DirectoryInfo dirInfo, ActionType actionType, LineEnding lineEnding)
