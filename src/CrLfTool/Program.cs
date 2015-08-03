@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -11,7 +12,7 @@ namespace CrLfTool
   class Program
   {
     private static Regex UnixLineEndingRx = new Regex("([^\r])\n", RegexOptions.Compiled);
-    private static Regex WindowsLineEndingRx = new Regex("\r\n", RegexOptions.Compiled);
+    private static Regex WindowsLineEndingRx = new Regex("\r\n", RegexOptions.Compiled);    
 
     [STAThread]
     static void Main(string[] args)
@@ -91,11 +92,20 @@ namespace CrLfTool
     private static async Task<bool> FixFile(FileInfo fileInfo, LineEnding lineEnding, Indexer index)
     {
       string content;
-      using (var rdr = File.OpenText(fileInfo.FullName))
+      using (var rdr = new StreamReader(fileInfo.FullName, Encoding.UTF8))
       {
         content = await rdr.ReadToEndAsync();
         rdr.Close();
       }
+      if (content.Contains("\ufffd"))
+      {
+        using (var rdr = new StreamReader(fileInfo.FullName, Encoding.GetEncoding(1251)))
+        {
+          content = await rdr.ReadToEndAsync();
+          rdr.Close();
+        }
+      }
+
       if (lineEnding == LineEnding.Unix)
       {
         content = WindowsLineEndingRx.Replace(content, "\n");
@@ -104,7 +114,8 @@ namespace CrLfTool
       {
         content = UnixLineEndingRx.Replace(content, "$1\r\n");
       }
-      using (var wrt = new StreamWriter(fileInfo.FullName))
+      File.Delete(fileInfo.FullName);
+      using (var wrt = new StreamWriter(fileInfo.FullName, false, Encoding.UTF8))
       {
         await wrt.WriteAsync(content);
         wrt.Close();
